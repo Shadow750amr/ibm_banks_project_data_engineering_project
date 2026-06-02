@@ -2,6 +2,7 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 import requests
 from typing import Optional
+import pandas as pd
 
 # Code for ETL operations on Country-GDP data
 
@@ -15,21 +16,31 @@ def log_progress(message):
     print(f'{formatted_date,message}')
     return None
 
-def extract(url):   #table_attribs
+def extract(url):  #,table_attribs
     ''' This function aims to extract the required
     information from the website and save it to a data frame. The
     function returns the data frame for further processing. '''
-
-    log_progress('Preliminaries complete. Initiating ETL process')
+    
+    log_progress("Preliminaries complete. Initiating ETL process")
     response = requests.get(url)
-    soup = BeautifulSoup(response.content,"html.parser")
+    soup = BeautifulSoup(response.content,'html.parser')
+    lista = []
     for table in soup.find_all('table'):
-        for header in table.find('Market cap(US$ billion)'):
-            print(header.text)
+        headers = [th.text.strip() for th in table.find_all('th')]
+        if 'Market cap(US$ billion)' in headers:
+            for row in soup.find_all('tr'):
+                data = [td.text.strip() for td in row.find_all('td')]
+                lista.append(data)
+    return print(lista)
+
+
+
+
+
 
     log_progress('Data extraction complete. Initiating Transformation process')
-
-    return print(header.text)
+    
+    
 
 def transform(df, csv_path):
     ''' This function accesses the CSV file for exchange rate
