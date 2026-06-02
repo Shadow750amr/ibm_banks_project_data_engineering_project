@@ -21,15 +21,15 @@ def extract(url, table_attribs):
     function returns the data frame for further processing. '''
 
     log_progress('Preliminaries complete. Initiating ETL process')
-    rq = requests.get(url)
-    print(rq.json())
-    
+    response = requests.get(url)
+    bsp = BeautifulSoup(response.content,"html.parser")
+    table = bsp.find_all('td')
     
     log_progress('Data extraction complete. Initiating Transformation process')
 
 
 
-    return df
+    return  table
 
 def transform(df, csv_path):
     ''' This function accesses the CSV file for exchange rate
