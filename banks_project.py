@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import requests
 from typing import Optional
 import pandas as pd
+import sqlite3
 
 # Code for ETL operations on Country-GDP data
 
@@ -27,13 +28,11 @@ def extract(url,table_attribs):
     lista = []
     for table in soup.find_all('table'):
         headers = [th.text.strip() for th in table.find_all('th')]
-        if table_attribs in headers:
-            headers = headers
-            for row in table.find_all('tr'):
-                data = [td.text.strip() for td in row.find_all('td')]
-                lista.append(data)
+        for row in table.find_all('tr'):
+            data = [td.text.strip() for td in row.find_all('td')]
+            lista.append(data)
     df = pd.DataFrame(lista,columns=headers)
-    df.rename(columns={"Number":"MC_USD_Billion"},inplace=True)
+    df.rename(columns=table_attribs,inplace=True)
     df.to_csv('final.csv')
 
     return df
@@ -48,54 +47,56 @@ def transform(df, csv_path):
 	containing the transformed version of Market Cap column to
 	respective currencies'''
 
-    df = pd.read_csv('final.csv')
-    csv_path = pd.read_csv('exchange_rate.csv')
-    exchange_rate = csv_path.set_index('Currency').to_dict()['Rate']
-    # Ensure exchange_rate['GBP'] is always a float
-    gbp_rate = float(exchange_rate['GBP'])
-    df['MC_GBP_Billion'] = [np.round(x * gbp_rate, 2) for x in df['MC_USD_Billion']]
-    eur_rate = float(exchange_rate['EUR'])
-    df['MC_EUR_Billion'] = [np.round(x * eur_rate, 2) for x in df['MC_USD_Billion']]
-    inr_rate = float(exchange_rate['INR'])
-    df['MC_INR_Billion'] = [np.round(x * inr_rate, 2) for x in df['MC_USD_Billion']]
+    df_path = pd.read_csv(df)
+    exchange_rate_csv = pd.read_csv(csv_path)
+    exchange_rate = exchange_rate_csv.set_index('Currency').to_dict()['Rate']
     
-
-
-
+    gbp_rate = float(exchange_rate['GBP'])
+    df_path['MC_GBP_Billion'] = [np.round(x * gbp_rate, 2) for x in df_path['MC_USD_Billion']]
+    eur_rate = float(exchange_rate['EUR'])
+    df_path['MC_EUR_Billion'] = [np.round(x * eur_rate, 2) for x in df_path['MC_USD_Billion']]
+    inr_rate = float(exchange_rate['INR'])
+    df_path['MC_INR_Billion'] = [np.round(x * inr_rate, 2) for x in df_path['MC_USD_Billion']]
 
     log_progress('Data transformation complete. Initiating Loading process')
-    return df
+    return df_path
 
 def load_to_csv(df, output_path):
     ''' This function saves the final data frame as a CSV file in
 	the provided path. Function returns nothing.'''
-
+    df_path = pd.read_csv(df)
+    df_path.to_csv(output_path)
 
     log_progress('Data saved to CSV file')
 
 def load_to_db(df, sql_connection, table_name):
     ''' This function saves the final data frame to a database
 	table with the provided name. Function returns nothing.'''
-
+    conn = sqlite3.connect('Banks.db')
     log_progress('SQL Connection initiated')
+     df.to_sql(conn,table_name)
     log_progress('Data loaded to Database as a table, Executing queries')
-    log_progress('Data loaded to Database as a table, Executing queries')
-    
-    
-
+    conn.close()
 
 def run_query(query_statement, sql_connection):
     ''' This function runs the query on the database table and
     prints the output on the terminal. Function returns nothing. '''
+    conn = sqlite3.connect('Banks.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM Largest_banks')
+    cursor.execute('SELECT AVG(MC_GBP_Billion) FROM Largest_banks')
+    cursor.execute('SELECT Bank name from Largest_banks LIMIT 5')
+    
 
 
-log_progress('Process Complete')
-log_progress('Server Connection closed')
+    log_progress('Process Complete')
+
+    log_progress('Server Connection closed')
 
 
-''' Here, you define the required entities and call the relevant
-functions in the correct order to complete the project. Note that this
-portion is not inside any function.'''
+    ''' Here, you define the required entities and call the relevant
+    functions in the correct order to complete the project. Note that this
+    portion is not inside any function.'''
 
 
 
