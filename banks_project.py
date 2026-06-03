@@ -16,7 +16,7 @@ def log_progress(message):
     print(f'{formatted_date,message}')
     return None
 
-def extract(url):  #,table_attribs
+def extract(url,table_attribs):  
     ''' This function aims to extract the required
     information from the website and save it to a data frame. The
     function returns the data frame for further processing. '''
@@ -27,16 +27,16 @@ def extract(url):  #,table_attribs
     lista = []
     for table in soup.find_all('table'):
         headers = [th.text.strip() for th in table.find_all('th')]
-        if 'Market cap(US$ billion)' in headers:
-            for row in soup.find_all('tr'):
+        if table_attribs in headers:
+            headers = headers
+            for row in table.find_all('tr'):
                 data = [td.text.strip() for td in row.find_all('td')]
                 lista.append(data)
-    return print(lista)
+    df = pd.DataFrame(lista,columns=headers)
+    df.rename(columns={"Number":"MC_USD_Billion"},inplace=True)
+    df.to_csv('final.csv')
 
-
-
-
-
+    return df
 
     log_progress('Data extraction complete. Initiating Transformation process')
     
@@ -89,6 +89,6 @@ portion is not inside any function.'''
 
 if __name__ =="__main__":
     url = 'https://web.archive.org/web/20230908091635/https://en.wikipedia.org/wiki/List_of_largest_banks'
-    extract(url)
+    extract(url,'Market cap(US$ billion)')
 
     
