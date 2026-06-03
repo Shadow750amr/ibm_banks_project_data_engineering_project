@@ -38,6 +38,7 @@ def extract(url):  #table_attribs
 
 if __name__ =="__main__":
     url = 'https://web.archive.org/web/20230908091635/https://en.wikipedia.org/wiki/List_of_largest_banks'
-    extract(url)
+    
+    extract(url,)
 
     

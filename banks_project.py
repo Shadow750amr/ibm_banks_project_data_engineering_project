@@ -4,6 +4,7 @@ import requests
 from typing import Optional
 import pandas as pd
 import sqlite3
+import numpy as np
 
 # Code for ETL operations on Country-GDP data
 
@@ -28,9 +29,10 @@ def extract(url,table_attribs):
     lista = []
     for table in soup.find_all('table'):
         headers = [th.text.strip() for th in table.find_all('th')]
-        for row in table.find_all('tr'):
-            data = [td.text.strip() for td in row.find_all('td')]
-            lista.append(data)
+        if "Market cap(US$ billion)" in headers:
+            for row in table.find_all('tr'):
+                data = [td.text.strip() for td in row.find_all('td')]
+                lista.append(data)
     df = pd.DataFrame(lista,columns=headers)
     df.rename(columns=table_attribs,inplace=True)
     df.to_csv('final.csv')
@@ -72,21 +74,22 @@ def load_to_csv(df, output_path):
 def load_to_db(df, sql_connection, table_name):
     ''' This function saves the final data frame to a database
 	table with the provided name. Function returns nothing.'''
-    conn = sqlite3.connect('Banks.db')
+    df_to_upload = pd.read_csv(df)
+    conn = sqlite3.connect(sql_connection)
     log_progress('SQL Connection initiated')
-     df.to_sql(conn,table_name)
+    df_to_upload.to_sql(table_name,conn)
     log_progress('Data loaded to Database as a table, Executing queries')
     conn.close()
 
 def run_query(query_statement, sql_connection):
     ''' This function runs the query on the database table and
     prints the output on the terminal. Function returns nothing. '''
-    conn = sqlite3.connect('Banks.db')
+    conn = sqlite3.connect(sql_connection)
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM Largest_banks')
-    cursor.execute('SELECT AVG(MC_GBP_Billion) FROM Largest_banks')
-    cursor.execute('SELECT Bank name from Largest_banks LIMIT 5')
-    
+    cursor.execute(query_statement)
+    cursor.close()
+
+    conn.close()
 
 
     log_progress('Process Complete')
@@ -102,6 +105,14 @@ def run_query(query_statement, sql_connection):
 
 if __name__ =="__main__":
     url = 'https://web.archive.org/web/20230908091635/https://en.wikipedia.org/wiki/List_of_largest_banks'
-    extract(url,'Market cap(US$ billion)')
+    table_attribs = {"Country":"Name","Number":"MC_USD_Billion"}
+    extract(url,table_attribs)
+    transform('final.csv','exchange_rate.csv')
+    load_to_csv('final.csv','final_final.csv')
+    load_to_db('final_final.csv','Banks.db','Largest_banks')
+    run_query('SELECT AVG(MC_GBP_Billion) FROM Largest_banks','Banks.db')
 
-    
+
+    #cursor.execute('SELECT AVG(MC_GBP_Billion) FROM Largest_banks')
+    #cursor.execute('SELECT Bank name from Largest_banks LIMIT 5')
+    #cursor.execute('SELECT * FROM Largest_banks')

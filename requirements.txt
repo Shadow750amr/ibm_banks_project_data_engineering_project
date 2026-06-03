@@ -1,4 +1,4 @@
 bs4
 requests
 pandas
-sqlite3
+sqlalchemy
